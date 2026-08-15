@@ -1,4 +1,4 @@
-import type { RakutenItem, SeriesKey } from "./types.ts";
+import type { RakutenItem, SalesDate, SeriesKey } from "./types.ts";
 import { parseSalesDate } from "./salesDate.ts";
 
 /** 全角半角・大小文字・空白を吸収する正規化 */
@@ -97,9 +97,12 @@ export function isSecondary(item: RakutenItem, base: SeriesKey): boolean {
 
 export type ResolvedSeries = {
   latestVolume: number;
-  latestSalesDate?: ReturnType<typeof parseSalesDate>;
+  latestSalesDate?: SalesDate;
+  /** latestVolume を出した商品。「この本は違う」で除外するのに要る */
+  latestIsbn: string;
   nextVolume?: number;
-  nextSalesDate?: ReturnType<typeof parseSalesDate>;
+  nextSalesDate?: SalesDate;
+  nextIsbn?: string;
   coverUrl?: string;
 };
 
@@ -153,15 +156,18 @@ export function resolveSeries(
     .map(([, e]) => e.item)
     .find(hasRealCover)?.largeImageUrl;
 
+  const latestDate = parseSalesDate(latestEntry.item.salesDate);
+  const nextDate = next ? parseSalesDate(next.item.salesDate) : null;
+
   return {
     latestVolume,
-    ...(parseSalesDate(latestEntry.item.salesDate)
-      ? { latestSalesDate: parseSalesDate(latestEntry.item.salesDate) }
-      : {}),
+    latestIsbn: latestEntry.item.isbn,
+    ...(latestDate ? { latestSalesDate: latestDate } : {}),
     ...(next
       ? {
           nextVolume: next.volume,
-          nextSalesDate: parseSalesDate(next.item.salesDate),
+          nextIsbn: next.item.isbn,
+          ...(nextDate ? { nextSalesDate: nextDate } : {}),
         }
       : {}),
     ...(cover ? { coverUrl: cover } : {}),

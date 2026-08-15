@@ -102,8 +102,10 @@ type Series = {
   latestVolume: number;   // 刊行済みの最新巻
   latestSalesDate?: SalesDate;
 
+  latestIsbn?: string;    // latestVolume を出した商品。「この本は違う」で除外するのに要る
   nextVolume?: number;    // 未発売の予約巻（あれば）
   nextSalesDate?: SalesDate;
+  nextIsbn?: string;
 
   isCompleted: boolean;     // 完結マーク（手動）
   excludedIsbns: string[];  // 誤検出した商品の除外リスト
@@ -124,7 +126,7 @@ type Store = {
 | 種別 | フィールド |
 |---|---|
 | **同期する**（ユーザーの意図） | `id` `title` `titlePrefix` `label` `publisher` `baseIsbn` `readUpTo` `isCompleted` `excludedIsbns` |
-| **同期しない**（端末内のキャッシュ） | `latestVolume` `nextVolume` `latestSalesDate` `nextSalesDate` `coverUrl` `lastCheckedAt` |
+| **同期しない**（端末内のキャッシュ） | `latestVolume` `latestSalesDate` `latestIsbn` `nextVolume` `nextSalesDate` `nextIsbn` `coverUrl` `lastCheckedAt` |
 
 この分離が §9 の前提。API由来のフィールドまで同期すると、バックグラウンド更新がファイル全体を書き戻すことになり、他端末で進めた `readUpTo` を巻き戻す事故が起きる。
 
@@ -147,7 +149,16 @@ type Store = {
 3. **次巻の予定なし** — 上記以外
 4. **完結** — `isCompleted === true`
 
-**セクションは排他ではないので、上から順に評価して最初に一致したものに入れる。** 完結作品でも未読が残っていればセクション1に出る。これは意図した挙動で、「読んだ最終巻と刊行済み最新巻の差を可視化する」という目的に合っている。
+セクションは排他ではないので、**判定は if / else if で上から順に**行う。ただし**表示順と判定順は異なる**ので注意すること。
+
+```
+判定順: 未読 → 完結 → 次巻判明 → 予定なし
+表示順: 未読 → 次巻判明 → 予定なし → 完結
+```
+
+完結作品は `nextVolume` を持たないため、判定で「予定なし」より後ろに置くと**すべて「予定なし」に吸い込まれて「完結」セクションが永久に空になる**。
+
+完結作品でも未読が残っていればセクション1に出る。これは意図した挙動で、「読んだ最終巻と刊行済み最新巻の差を可視化する」という目的に合っている。
 
 各行に「◯巻まで読んだ / 最新は◯巻」を表示する。
 

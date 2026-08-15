@@ -53,12 +53,17 @@ export type Series = {
   excludedIsbns: string[];
 
   // ---- 同期しない（APIから再取得できる端末内キャッシュ）----
-  latestVolume?: number;
-  latestSalesDate?: SalesDate;
-  nextVolume?: number;
-  nextSalesDate?: SalesDate;
-  coverUrl?: string;
-  lastCheckedAt?: string;
+  // 再取得のたびに「無くなる」ことがあるので undefined を明示的に許可する
+  // （次巻の予約が取り下げられた、除外で最新巻が変わった、など）
+  latestVolume?: number | undefined;
+  latestSalesDate?: SalesDate | undefined;
+  /** latestVolume を出した商品。「この本は違う」で除外するのに要る */
+  latestIsbn?: string | undefined;
+  nextVolume?: number | undefined;
+  nextSalesDate?: SalesDate | undefined;
+  nextIsbn?: string | undefined;
+  coverUrl?: string | undefined;
+  lastCheckedAt?: string | undefined;
 };
 
 /** 同定に必要な部分だけを取り出したもの */
