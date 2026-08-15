@@ -253,6 +253,12 @@ function renderDetail(s: Series): HTMLElement {
     el(
       "div",
       { class: "detail-line" },
+      // ＋の長押しでも同じことができるが、スマホでは長押しを発見できないので
+      // 明示的なボタンを置く。誤タップの取り消しもここから行う
+      el("button", {
+        textContent: "何巻まで読んだか入力",
+        onclick: () => promptReadUpTo(s),
+      }),
       el("button", {
         textContent: s.isCompleted ? "完結マークを外す" : "完結にする",
         onclick: () => {

@@ -48,19 +48,17 @@ export function createFixtureClient(): SearchClient {
 /** 検索できる作品名（フィクスチャ版でのみ意味がある） */
 export const FIXTURE_TITLES = ["路傍のフジイ", "アオのハコ", "アルスラーン戦記"];
 
-declare const __RAKUTEN_APP_ID__: string;
-
 /**
  * 実APIクライアントは §12 手順6 で実装する。
- * 認証情報が無い環境（ローカル開発）では自動的にフィクスチャ版になる。
+ * それまでは認証情報の有無にかかわらず常にフィクスチャ版を返す。
+ *
+ * 「認証情報があれば実API」という分岐にしてはいけない。シークレットを
+ * 登録した時点で画面の「検証用データで動作中」が消えるのに中身はフィクスチャ
+ * のままになり、実APIに繋がっていると誤解する。
  */
 export function createClient(): SearchClient {
-  const hasCredentials =
-    typeof __RAKUTEN_APP_ID__ === "string" && __RAKUTEN_APP_ID__ !== "";
-  if (!hasCredentials) return createFixtureClient();
   // TODO(§12 手順6): fetch + レート制限 + ページング + 429バックオフ
   return createFixtureClient();
 }
 
-export const isUsingFixtures = (): boolean =>
-  typeof __RAKUTEN_APP_ID__ !== "string" || __RAKUTEN_APP_ID__ === "";
+export const isUsingFixtures = (): boolean => true;
