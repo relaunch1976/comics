@@ -370,7 +370,9 @@ function renderAdd(): Node[] {
     ),
   );
 
-  if (candidates !== null) {
+  if (searchError)
+    body.push(el("p", { class: "empty" }, `検索できませんでした。${searchError}`));
+  else if (candidates !== null) {
     if (candidates.length === 0)
       body.push(el("p", { class: "empty" }, "見つかりませんでした。"));
     else body.push(el("div", {}, ...candidates.map(renderCandidate)));
@@ -439,15 +441,19 @@ function addSeries(item: RakutenItem): void {
 
 // ---------------------------------------------------------------- 検索と更新
 
+let searchError = "";
+
 async function search(): Promise<void> {
   if (!query.trim() || searching) return;
   searching = true;
+  searchError = "";
   render();
   try {
-    const res = await client.search(query.trim());
-    candidates = res.Items;
-  } catch {
+    candidates = await client.searchForAdd(query.trim());
+  } catch (e) {
     candidates = [];
+    searchError =
+      e instanceof Error ? e.message : "検索に失敗しました";
   } finally {
     searching = false;
     render();
@@ -457,7 +463,13 @@ async function search(): Promise<void> {
 function applyResolved(s: Series, items: RakutenItem[]): void {
   const r = resolveSeries(items, s);
   s.lastCheckedAt = new Date().toISOString();
-  if (!r) return;
+  if (!r) {
+    // 全部除外された等で解決できなくなったら、古い値を残さず消す
+    s.nextVolume = undefined;
+    s.nextIsbn = undefined;
+    s.nextSalesDate = undefined;
+    return;
+  }
   s.latestVolume = r.latestVolume;
   s.latestIsbn = r.latestIsbn;
   s.latestSalesDate = r.latestSalesDate;
@@ -473,12 +485,37 @@ function applyResolved(s: Series, items: RakutenItem[]): void {
 /** 1作品だけ取り直す（除外操作の直後など） */
 async function refresh(s: Series): Promise<void> {
   try {
-    const res = await client.search(s.titlePrefix);
-    applyResolved(s, res.Items);
+    applyResolved(s, await client.fetchLatest(s.titlePrefix));
   } catch {
     // 失敗しても既存の表示は残す
   }
   commit();
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * 起動時のバックグラウンド更新（設計書 §8）。
+ *
+ * 画面は既存データで即座に出し、更新できたものから差し替える。
+ * クライアント側が直列化とレート制限をやるので、ここでは順に await するだけでよい。
+ */
+export async function refreshStale(): Promise<void> {
+  const now = Date.now();
+  const targets = store.series.filter((s) => {
+    if (s.isCompleted) return false; // 完結作品は問い合わせない
+    if (!s.lastCheckedAt) return true; // 他端末で追加された直後
+    return now - new Date(s.lastCheckedAt).getTime() >= DAY_MS;
+  });
+
+  for (const s of targets) {
+    try {
+      applyResolved(s, await client.fetchLatest(s.titlePrefix));
+      commit();
+    } catch {
+      // 失敗した作品は lastCheckedAt を進めず、次回の起動で再試行する
+    }
+  }
 }
 
 // ---------------------------------------------------------------- 描画
