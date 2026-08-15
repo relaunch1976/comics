@@ -23,7 +23,16 @@ npm install
 npm test        # コアロジックのテスト（Node 標準の test runner）
 npm run dev     # 開発サーバー
 npm run build   # 本番ビルド
+npm run preview # ビルド結果を確認する（Service Worker は本番ビルドでのみ動く）
+npm run icons   # PWAアイコンを生成し直す
 ```
+
+テストは Node の型ストリッピングで直接実行するため、**パラメータプロパティ・enum・namespace は使えない**。
+
+## 使い方
+
+**ホーム画面に追加してから使うこと。** iOS Safari は、ホーム画面に追加していない
+サイトのデータを7日間の未使用で破棄する。ブックマークのままだと登録が消える。
 
 ### ローカルからは実APIを叩けない
 
